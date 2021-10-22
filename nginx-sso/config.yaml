@@ -1,0 +1,45 @@
+---
+listen:
+  addr: "0.0.0.0"
+  port: 8000
+
+login:
+  title: "VMM.PW"
+  default_method: "simple"
+  default_redirect: "https://vmm.pw/"
+  hide_mfa_field: false
+  names:
+    simple: ":)"
+
+cookie:
+  authentication_key: "q9TnFn7YGZeVphBdG1lca58Gp895sGScF2KyxBrwtQVoJitqetj4APMjj9QF60+0"
+  prefix: "sso"
+  domain: ".vmm.pw"
+  secure: true
+
+audit_log:
+  targets:
+    - fd://stdout
+  events: ['access_denied', 'login_success', 'login_failure', 'logout', 'validate']
+  headers: ['x-origin-uri']
+  trusted_ip_headers: ["X-Forwarded-For", "RemoteAddr", "X-Real-IP"]
+
+providers:
+  simple:
+    enable_basic_auth: false
+    users:
+      aeon: "$2y$10$YgLh6PgcK1CNB8mU7KlK9eNbFNXwvOSPqfRqaZ.HAhrTTTU8MMXDC"
+    groups:
+      admins: ["aeon"]
+    mfa:
+      aeon:
+        - provider: totp
+          attributes:
+            secret: hubdbwwjle4vevk2ejaw6tjigmqr5gjz
+
+acl:
+  rule_sets:
+  - rules:
+    - field: "x-host"
+      regexp: "\\.vmm\\.pw$"
+    allow: ["@_authenticated"]

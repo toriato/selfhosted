@@ -9,7 +9,22 @@ services:
       - seccomp:unconfined
       - apparmor:unconfined
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /run/docker.sock:/run/docker.sock
+
+  php:
+    image: aeon/php
+    build: ./php/build
+    restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    depends_on:
+      - mariadb
+    volumes:
+      - ./php/rootfs/etc/php:/usr/local/etc/php:ro
+      - ./php/rootfs/etc/php-fpm.d:/usr/local/etc/php-fpm.d:ro
+      - ./php/rootfs/etc/php-fpm.conf:/usr/local/etc/php-fpm.conf:ro
+      - /srv/docker/nginx:/data
 
   nginx:
     image: aeon/nginx
@@ -19,12 +34,13 @@ services:
       - seccomp:unconfined
       - apparmor:unconfined
     depends_on:
+      - php
       - nginx-sso
-      - app-netdata
-      - app-code
-      - app-photoprism
-      - app-jellyfin
-      - app-flood
+      - netdata
+      - code
+      - photoprism
+      - jellyfin
+      - flood
     healthcheck:
       test: [ 'CMD', 'curl', '-i', 'http://localhost' ]
       interval: 60s
@@ -33,10 +49,13 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/config:/etc/nginx:ro
-      - $HOME/Public:/public:ro
+      - ./nginx/rootfs/etc/nginx:/etc/nginx:ro
       - /etc/letsencrypt/live:/etc/letsencrypt/live:ro
       - /etc/letsencrypt/archive:/etc/letsencrypt/archive:ro
+      - /srv/docker/nginx:/data
+      # Public directories
+      - /home/aeon/Public:/data/pw.vmm.public/aeon:ro
+      - /home/cho/Public:/data/pw.vmm.public/cho:ro
 
   nginx-sso:
     image: luzifer/nginx-sso:latest
@@ -45,11 +64,14 @@ services:
       - seccomp:unconfined
       - apparmor:unconfined
     volumes:
-      - ./nginx-sso/config.yaml:/data/config.yaml
+      - ./nginx-sso/rootfs/data/config.yaml:/data/config.yaml
 
   mariadb:
     image: mariadb:latest
-    command: mysqld --transaction-isolation=READ-COMMITTED --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=512 --innodb-rollback-on-timeout=OFF --innodb-lock-wait-timeout=50
+    command: mysqld --transaction-isolation=READ-COMMITTED
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      --max-connections=512 --innodb-rollback-on-timeout=OFF
+      --innodb-lock-wait-timeout=50
     restart: unless-stopped
     security_opt:
       - seccomp:unconfined
@@ -61,8 +83,8 @@ services:
     env_file:
       - ./mariadb/secure.env
     volumes:
-      - /srv/storage/docker/selfhosted/mariadb:/var/lib/mysql
       - /run/mysqld:/run/mysqld
+      - /srv/docker/mariadb:/var/lib/mysql
 
   sonic:
     image: valeriansaliou/sonic:v1.3.0
@@ -73,10 +95,10 @@ services:
     env_file:
       - ./sonic/secure.env
     volumes:
-      - ./sonic/sonic.cfg:/etc/sonic.cfg:ro
-      - /srv/storage/docker/selfhosted/sonic:/var/lib/sonic
+      - ./sonic/rootfs/etc/sonic.cfg:/etc/sonic.cfg:ro
+      - /srv/docker/sonic:/var/lib/sonic
 
-  app-netdata:
+  netdata:
     image: netdata/netdata:latest
     restart: unless-stopped
     cap_add:
@@ -88,9 +110,9 @@ services:
       NVIDIA_DRIVER_CAPABILITIES: all
       NVIDIA_VISIBLE_DEVICES: all
     volumes:
-      - ./apps/netdata/config:/etc/netdata:ro
-      - /srv/storage/docker/selfhosted/netdata/lib:/var/lib/netdata
-      - /srv/storage/docker/selfhosted/netdata/cache:/var/cache/netdata
+      - ./netdata/rootfs/etc/netdata:/etc/netdata:ro
+      - /srv/docker/netdata/lib:/var/lib/netdata
+      - /srv/docker/netdata/cache:/var/cache/netdata
       - /etc/passwd:/host/etc/passwd:ro
       - /etc/group:/host/etc/group:ro
       - /proc:/host/proc:ro
@@ -100,22 +122,22 @@ services:
       resources:
         reservations:
           devices:
-          - capabilities: [gpu]
+            - capabilities: [ gpu ]
 
-  app-code:
+  code:
     user: 1000:1000
-    build: ./apps/code/build
+    build: ./code/build
     image: aeon/code
     restart: unless-stopped
     security_opt:
       - seccomp:unconfined
       - apparmor:unconfined
     volumes:
-      - ./apps/code/config:/home/code/.config/code-server:ro
-      - $HOME/.config/Code - Insiders/User:/home/code/.local/share/code-server/User
-      - $HOME/.dotfiles:/home/code/.dotfiles
+      - ./code/rootfs/home/code/.config/code-server:/home/code/.config/code-server:ro
+      - ~/.config/Code - Insiders:/home/code/.local/share/code-server
+      - ~/.dotfiles:/home/code/.dotfiles
 
-  app-photoprism:
+  photoprism:
     user: 1000:1000
     image: photoprism/photoprism:preview
     restart: unless-stopped
@@ -129,22 +151,22 @@ services:
       interval: 60s
       timeout: 10s
     env_file:
-      - ./apps/photoprism/config.env
-      - ./apps/photoprism/secure.env
+      - ./photoprism/config.env
+      - ./photoprism/secure.env
     environment:
       NVIDIA_DRIVER_CAPABILITIES: all
       NVIDIA_VISIBLE_DEVICES: all
     working_dir: /photoprism
     volumes:
       - ~/Pictures:/photoprism/originals
-      - /srv/storage/docker/selfhosted/photoprism/storage:/photoprism/storage
+      - /srv/docker/photoprism/storage:/photoprism/storage
     deploy:
       resources:
         reservations:
           devices:
-          - capabilities: [gpu]
+            - capabilities: [ gpu ]
 
-  app-jellyfin:
+  jellyfin:
     user: 1000:1000
     image: jellyfin/jellyfin
     restart: unless-stopped
@@ -152,9 +174,9 @@ services:
       - seccomp:unconfined
       - apparmor:unconfined
     volumes:
-      - /srv/storage/docker/selfhosted/jellyfin/config:/config
-      - /srv/storage/docker/selfhosted/jellyfin/cache:/cache
-      - /srv/storage/docker/selfhosted/jellyfin/media:/media
+      - /srv/docker/jellyfin/config:/config
+      - /srv/docker/jellyfin/cache:/cache
+      - /srv/docker/jellyfin/media:/media
     environment:
       NVIDIA_DRIVER_CAPABILITIES: all
       NVIDIA_VISIBLE_DEVICES: all
@@ -162,9 +184,9 @@ services:
       resources:
         reservations:
           devices:
-          - capabilities: [gpu]
+            - capabilities: [ gpu ]
 
-  app-rtorrent:
+  rtorrent:
     image: looselyrigorous/rtorrent:latest
     restart: unless-stopped
     security_opt:
@@ -174,24 +196,23 @@ services:
       - PUID=1000
       - PGID=1000
     volumes:
+      - ./rtorrent/rootfs/config:/config
       - /run/rtorrent:/socket
-      - ./apps/rtorrent/config:/config
-      - $HOME/Downloads:/watch
-      - $HOME/Downloads:/download
+      - ~/Downloads:/watch
+      - ~/Downloads:/download
 
-  app-flood:
+  flood:
     image: aeon/flood
-    build: ./apps/flood/build
+    build: ./flood/build
     restart: unless-stopped
     security_opt:
       - seccomp:unconfined
       - apparmor:unconfined
     volumes:
       - /run/rtorrent:/run/rtorrent
-      - /srv/storage/docker/selfhosted/flood:/data
-      - $HOME/Downloads:/download
-
-  # app-archivebox:
+      - /srv/docker/flood:/data
+      - ~/Downloads:/download
+  # archivebox:
   #   image: archivebox/archivebox:master
   #   command: server --quick-init 0.0.0.0:8000
   #   restart: unless-stopped
@@ -201,7 +222,7 @@ services:
   #   depends_on:
   #     - sonic
   #   env_file:
-  #     - ./apps/archivebox/config.env
-  #     - ./apps/archivebox/secure.env
+  #     - ./archivebox/config.env
+  #     - ./archivebox/secure.env
   #   volumes:
-  #     - /srv/storage/docker/selfhosted/archivebox:/data
+  #     - /srv/docker/archivebox:/data

@@ -1,5 +1,10 @@
 version: '3'
 
+networks:
+  default:
+    attachable: true
+    name: "selfhosted"
+
 services:
 
   watchtower:
@@ -9,7 +14,7 @@ services:
       - seccomp:unconfined
       - apparmor:unconfined
     volumes:
-      - /run/docker.sock:/run/docker.sock
+      - /run/docker.sock:/var/run/docker.sock
 
   php:
     image: aeon/php
@@ -24,7 +29,16 @@ services:
       - ./php/rootfs/etc/php:/usr/local/etc/php:ro
       - ./php/rootfs/etc/php-fpm.d:/usr/local/etc/php-fpm.d:ro
       - ./php/rootfs/etc/php-fpm.conf:/usr/local/etc/php-fpm.conf:ro
+      # Web
       - /srv/docker/nginx:/data
+      # Public directories
+      - /home/aeon/Public:/data/pw.vmm.public/aeon:ro
+      - /home/cho/Public:/data/pw.vmm.public/cho:ro
+      # Nextcloud
+      - /home/aeon/Downloads:/data/pw.vmm.drive/data/aeon/files/Downloads
+      - /home/aeon/Media:/data/pw.vmm.drive/data/aeon/files/Media
+      - /home/aeon/Pictures:/data/pw.vmm.drive/data/aeon/files/Pictures
+      - /home/aeon/Public:/data/pw.vmm.drive/data/aeon/files/Public
 
   nginx:
     image: aeon/nginx
@@ -41,6 +55,7 @@ services:
       - photoprism
       - jellyfin
       - flood
+      - neko
     healthcheck:
       test: [ 'CMD', 'curl', '-i', 'http://localhost' ]
       interval: 60s
@@ -52,10 +67,15 @@ services:
       - ./nginx/rootfs/etc/nginx:/etc/nginx:ro
       - /etc/letsencrypt/live:/etc/letsencrypt/live:ro
       - /etc/letsencrypt/archive:/etc/letsencrypt/archive:ro
+      # Web
       - /srv/docker/nginx:/data
       # Public directories
       - /home/aeon/Public:/data/pw.vmm.public/aeon:ro
       - /home/cho/Public:/data/pw.vmm.public/cho:ro
+      # Nextcloud
+      - /home/aeon/Media:/data/pw.vmm.drive/data/aeon/files/Media
+      - /home/aeon/Pictures:/data/pw.vmm.drive/data/aeon/files/Pictures
+      - /home/aeon/Public:/data/pw.vmm.drive/data/aeon/files/Public
 
   nginx-sso:
     image: luzifer/nginx-sso:latest
@@ -71,7 +91,7 @@ services:
     command: mysqld --transaction-isolation=READ-COMMITTED
       --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
       --max-connections=512 --innodb-rollback-on-timeout=OFF
-      --innodb-lock-wait-timeout=50
+      --innodb-lock-wait-timeout=50 --skip-innodb-read-only-compressed
     restart: unless-stopped
     security_opt:
       - seccomp:unconfined
@@ -212,6 +232,21 @@ services:
       - /run/rtorrent:/run/rtorrent
       - /srv/docker/flood:/data
       - ~/Downloads:/download
+
+  neko:
+    image: aeon/neko:chromium
+    restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    cap_add:
+      - SYS_ADMIN
+    shm_size: 2gb
+    ports:
+      - 52000-52100:52000-52100/udp
+    env_file:
+      - ./neko/config.env
+      - ./neko/secure.env
   # archivebox:
   #   image: archivebox/archivebox:master
   #   command: server --quick-init 0.0.0.0:8000

@@ -1,0 +1,3 @@
+#!/bin/bash
+PROJECT_PATH="$HOME/Projects/selfhosted/docker-compose.yml"
+docker-compose -f "$PROJECT_PATH" exec -u $(id -u) php /data/pw.vmm.drive/occ $@

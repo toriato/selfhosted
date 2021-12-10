@@ -1,9 +1,5 @@
 {
-  "homepage": "http://www.google.com",
-  "homepage_is_newtabpage": false,
-  "first_run_tabs": [
-    "https://www.google.com/_/chrome/newtab?ie=UTF-8"
-  ],
+  "homepage_is_newtabpage": true,
   "custom_links": {
     "initialized": true,
     "list": [

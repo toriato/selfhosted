@@ -18,7 +18,7 @@ services:
 
   php:
     image: aeon/php
-    build: ./php/build
+    build: ./apps/php/build
     restart: unless-stopped
     security_opt:
       - seccomp:unconfined
@@ -26,9 +26,9 @@ services:
     depends_on:
       - mariadb
     volumes:
-      - ./php/rootfs/etc/php:/usr/local/etc/php:ro
-      - ./php/rootfs/etc/php-fpm.d:/usr/local/etc/php-fpm.d:ro
-      - ./php/rootfs/etc/php-fpm.conf:/usr/local/etc/php-fpm.conf:ro
+      - ./apps/php/rootfs/etc/php:/usr/local/etc/php:ro
+      - ./apps/php/rootfs/etc/php-fpm.d:/usr/local/etc/php-fpm.d:ro
+      - ./apps/php/rootfs/etc/php-fpm.conf:/usr/local/etc/php-fpm.conf:ro
       # Web
       - /srv/docker/nginx:/data
       # Public directories
@@ -42,7 +42,7 @@ services:
 
   nginx:
     image: aeon/nginx
-    build: ./nginx/build
+    build: ./apps/nginx/build
     restart: unless-stopped
     security_opt:
       - seccomp:unconfined
@@ -64,7 +64,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/rootfs/etc/nginx:/etc/nginx:ro
+      - ./apps/nginx/rootfs/etc/nginx:/etc/nginx:ro
       - /etc/letsencrypt/live:/etc/letsencrypt/live:ro
       - /etc/letsencrypt/archive:/etc/letsencrypt/archive:ro
       # Web
@@ -73,6 +73,7 @@ services:
       - /home/aeon/Public:/data/pw.vmm.public/aeon:ro
       - /home/cho/Public:/data/pw.vmm.public/cho:ro
       # Nextcloud
+      - /home/aeon/Downloads:/data/pw.vmm.drive/data/aeon/files/Downloads
       - /home/aeon/Media:/data/pw.vmm.drive/data/aeon/files/Media
       - /home/aeon/Pictures:/data/pw.vmm.drive/data/aeon/files/Pictures
       - /home/aeon/Public:/data/pw.vmm.drive/data/aeon/files/Public
@@ -84,7 +85,7 @@ services:
       - seccomp:unconfined
       - apparmor:unconfined
     volumes:
-      - ./nginx-sso/rootfs/data/config.yaml:/data/config.yaml
+      - ./apps/nginx-sso/rootfs/data/config.yaml:/data/config.yaml
 
   mariadb:
     image: mariadb:latest
@@ -101,7 +102,7 @@ services:
       interval: 60s
       timeout: 10s
     env_file:
-      - ./mariadb/secure.env
+      - ./apps/mariadb/secure.env
     volumes:
       - /run/mysqld:/run/mysqld
       - /srv/docker/mariadb:/var/lib/mysql
@@ -113,9 +114,9 @@ services:
       - seccomp:unconfined
       - apparmor:unconfined
     env_file:
-      - ./sonic/secure.env
+      - ./apps/sonic/secure.env
     volumes:
-      - ./sonic/rootfs/etc/sonic.cfg:/etc/sonic.cfg:ro
+      - ./apps/sonic/rootfs/etc/sonic.cfg:/etc/sonic.cfg:ro
       - /srv/docker/sonic:/var/lib/sonic
 
   netdata:
@@ -130,7 +131,7 @@ services:
       NVIDIA_DRIVER_CAPABILITIES: all
       NVIDIA_VISIBLE_DEVICES: all
     volumes:
-      - ./netdata/rootfs/etc/netdata:/etc/netdata:ro
+      - ./apps/netdata/rootfs/etc/netdata:/etc/netdata:ro
       - /srv/docker/netdata/lib:/var/lib/netdata
       - /srv/docker/netdata/cache:/var/cache/netdata
       - /etc/passwd:/host/etc/passwd:ro
@@ -146,14 +147,14 @@ services:
 
   code:
     user: 1000:1000
-    build: ./code/build
+    build: ./apps/code/build
     image: aeon/code
     restart: unless-stopped
     security_opt:
       - seccomp:unconfined
       - apparmor:unconfined
     volumes:
-      - ./code/rootfs/home/code/.config/code-server:/home/code/.config/code-server:ro
+      - ./apps/code/rootfs/home/code/.config/code-server:/home/code/.config/code-server:ro
       - ~/.config/Code - Insiders:/home/code/.local/share/code-server
       - ~/.dotfiles:/home/code/.dotfiles
 
@@ -171,8 +172,8 @@ services:
       interval: 60s
       timeout: 10s
     env_file:
-      - ./photoprism/config.env
-      - ./photoprism/secure.env
+      - ./apps/photoprism/config.env
+      - ./apps/photoprism/secure.env
     environment:
       NVIDIA_DRIVER_CAPABILITIES: all
       NVIDIA_VISIBLE_DEVICES: all
@@ -216,14 +217,14 @@ services:
       - PUID=1000
       - PGID=1000
     volumes:
-      - ./rtorrent/rootfs/config:/config
+      - ./apps/rtorrent/rootfs/config:/config
       - /run/rtorrent:/socket
       - ~/Downloads:/watch
       - ~/Downloads:/download
 
   flood:
     image: aeon/flood
-    build: ./flood/build
+    build: ./apps/flood/build
     restart: unless-stopped
     security_opt:
       - seccomp:unconfined
@@ -245,8 +246,11 @@ services:
     ports:
       - 52000-52100:52000-52100/udp
     env_file:
-      - ./neko/config.env
-      - ./neko/secure.env
+      - ./apps/neko/config.env
+      - ./apps/neko/secure.env
+    volumes:
+      - ./apps/neko/rootfs/etc/chromium/policies/managed/policies.json:/etc/chromium/policies/managed/policies.json:ro
+      - ./apps/neko/rootfs/home/neko/.config/chromium/Default/Preferences:/home/neko/.config/chromium/Default/Preferences:ro
   # archivebox:
   #   image: archivebox/archivebox:master
   #   command: server --quick-init 0.0.0.0:8000
@@ -257,7 +261,7 @@ services:
   #   depends_on:
   #     - sonic
   #   env_file:
-  #     - ./archivebox/config.env
-  #     - ./archivebox/secure.env
+  #     - ./apps/archivebox/config.env
+  #     - ./apps/archivebox/secure.env
   #   volumes:
   #     - /srv/docker/archivebox:/data

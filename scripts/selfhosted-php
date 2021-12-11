@@ -1,0 +1,3 @@
+#!/bin/bash
+cd $(dirname "$0")
+./selfhosted exec -u $(id -u) php php $@

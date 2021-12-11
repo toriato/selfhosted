@@ -6,7 +6,7 @@ WORKDIR /src
 
 # install dependencies
 RUN apk add --no-cache --virtual .build-deps \
-  build-base git cmake make libx11-dev libxrandr-dev libxtst-dev \
+  build-base git cmake libx11-dev libxrandr-dev libxtst-dev \
   gstreamer-dev gst-plugins-base-dev gst-plugins-good gst-plugins-bad gst-plugins-ugly
 
 RUN git clone https://github.com/jtanx/libclipboard ;\

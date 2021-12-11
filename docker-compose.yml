@@ -2,8 +2,7 @@ version: '3'
 
 networks:
   default:
-    attachable: true
-    name: "selfhosted"
+    name: selfhosted
 
 services:
 
@@ -23,8 +22,6 @@ services:
     security_opt:
       - seccomp:unconfined
       - apparmor:unconfined
-    depends_on:
-      - mariadb
     volumes:
       - ./apps/php/rootfs/etc/php:/usr/local/etc/php:ro
       - ./apps/php/rootfs/etc/php-fpm.d:/usr/local/etc/php-fpm.d:ro
@@ -61,8 +58,8 @@ services:
       interval: 60s
       timeout: 10s
     ports:
-      - "80:80"
-      - "443:443"
+      - 80:80
+      - 443:443
     volumes:
       - ./apps/nginx/rootfs/etc/nginx:/etc/nginx:ro
       - /etc/letsencrypt/live:/etc/letsencrypt/live:ro
@@ -85,7 +82,7 @@ services:
       - seccomp:unconfined
       - apparmor:unconfined
     volumes:
-      - ./apps/nginx-sso/rootfs/data/config.yaml:/data/config.yaml
+      - ./apps/nginx-sso/rootfs/data/config.yaml:/data/config.yaml:ro
 
   mariadb:
     image: mariadb:latest
@@ -104,7 +101,6 @@ services:
     env_file:
       - ./apps/mariadb/secure.env
     volumes:
-      - /run/mysqld:/run/mysqld
       - /srv/docker/mariadb:/var/lib/mysql
 
   sonic:
@@ -218,19 +214,21 @@ services:
       - PGID=1000
     volumes:
       - ./apps/rtorrent/rootfs/config:/config
-      - /run/rtorrent:/socket
       - ~/Downloads:/watch
       - ~/Downloads:/download
 
   flood:
     image: aeon/flood
     build: ./apps/flood/build
+    command: flood --host 0.0.0.0 --port 8000 --rundir /data --auth none --rthost
+      rtorrent --rtport 5050
     restart: unless-stopped
     security_opt:
       - seccomp:unconfined
       - apparmor:unconfined
+    depends_on:
+      - rtorrent
     volumes:
-      - /run/rtorrent:/run/rtorrent
       - /srv/docker/flood:/data
       - ~/Downloads:/download
 
